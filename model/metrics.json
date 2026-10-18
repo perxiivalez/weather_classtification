@@ -1,0 +1,149 @@
+{
+  "test_acc": 0.8728070175438597,
+  "val_acc": 0.9385964912280702,
+  "train_acc": 0.9342105263157895,
+  "best_epoch": 57,
+  "n_train": 1064,
+  "n_val": 228,
+  "n_test": 228,
+  "per_class": {
+    "Cloudy": {
+      "precision": 0.3333333333333333,
+      "recall": 0.16666666666666666,
+      "support": 6
+    },
+    "Rain": {
+      "precision": 0.8979591836734694,
+      "recall": 0.8627450980392157,
+      "support": 51
+    },
+    "Shine": {
+      "precision": 0.8461538461538461,
+      "recall": 0.873015873015873,
+      "support": 63
+    },
+    "Sunrise": {
+      "precision": 0.9454545454545454,
+      "recall": 0.9811320754716981,
+      "support": 53
+    },
+    "Storm Cloudy": {
+      "precision": 0.8392857142857143,
+      "recall": 0.8545454545454545,
+      "support": 55
+    }
+  },
+  "class_counts": {
+    "Cloudy": [
+      27,
+      6,
+      6
+    ],
+    "Rain": [
+      241,
+      51,
+      51
+    ],
+    "Shine": [
+      294,
+      63,
+      63
+    ],
+    "Sunrise": [
+      246,
+      53,
+      53
+    ],
+    "Storm Cloudy": [
+      256,
+      55,
+      55
+    ]
+  },
+  "calibration": {
+    "temperature": 0.8,
+    "val_nll_before": 0.2134407029794113,
+    "val_nll_after": 0.20606820132182946,
+    "test_ece_before": 0.05463570262538189,
+    "test_ece_after": 0.04818709619222236
+  },
+  "confusion_matrix": [
+    [
+      1,
+      0,
+      5,
+      0,
+      0
+    ],
+    [
+      0,
+      44,
+      1,
+      0,
+      6
+    ],
+    [
+      1,
+      2,
+      55,
+      2,
+      3
+    ],
+    [
+      0,
+      0,
+      1,
+      52,
+      0
+    ],
+    [
+      1,
+      3,
+      3,
+      1,
+      47
+    ]
+  ],
+  "classes": [
+    "Cloudy",
+    "Rain",
+    "Shine",
+    "Sunrise",
+    "Storm Cloudy"
+  ],
+  "hyper": {
+    "rebuild": false,
+    "model": "hybrid",
+    "channels": [
+      16,
+      32,
+      32
+    ],
+    "fc_img": 64,
+    "fc_feat": 64,
+    "epochs": 120,
+    "lr": 0.001,
+    "l2": 0.001,
+    "dropout": 0.3,
+    "batch": 64,
+    "gain": 0.25,
+    "patience": 25,
+    "feat": "eng",
+    "seed": 1,
+    "final": true
+  },
+  "model": {
+    "cnn_channels": [
+      16,
+      32,
+      32
+    ],
+    "cnn_fc": 64,
+    "feature_fc": 64,
+    "n_feat": 36,
+    "concat_width": 128,
+    "n_classes": 5,
+    "n_params": 50181
+  },
+  "gradient_check_max_rel_error": 5.07187220078211e-10
+}

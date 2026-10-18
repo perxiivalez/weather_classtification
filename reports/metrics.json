@@ -1,0 +1,97 @@
+{
+  "test_acc": 0.8702928870292888,
+  "val_acc": 0.905982905982906,
+  "train_acc": 0.9011786038077969,
+  "best_epoch": 139,
+  "n_train": 1103,
+  "n_val": 234,
+  "n_test": 239,
+  "per_class": {
+    "Cloudy": {
+      "precision": 0.7945205479452054,
+      "recall": 0.8285714285714286,
+      "support": 70
+    },
+    "Rain": {
+      "precision": 0.9459459459459459,
+      "recall": 0.6730769230769231,
+      "support": 52
+    },
+    "Shine": {
+      "precision": 0.8181818181818182,
+      "recall": 0.984375,
+      "support": 64
+    },
+    "Sunrise": {
+      "precision": 1.0,
+      "recall": 0.9811320754716981,
+      "support": 53
+    }
+  },
+  "test_acc_by_source": {
+    "dataset2": {
+      "n": 166,
+      "acc": 0.8493975903614458
+    },
+    "cuaca": {
+      "n": 73,
+      "acc": 0.9178082191780822
+    }
+  },
+  "calibration": {
+    "temperature": 0.9,
+    "val_nll_before": 0.34112006003969364,
+    "val_nll_after": 0.33827839460181114,
+    "test_ece_before": 0.03878093723308708,
+    "test_ece_after": 0.03047848346288931
+  },
+  "confusion_matrix": [
+    [
+      58,
+      2,
+      10,
+      0
+    ],
+    [
+      14,
+      35,
+      3,
+      0
+    ],
+    [
+      1,
+      0,
+      63,
+      0
+    ],
+    [
+      0,
+      0,
+      1,
+      52
+    ]
+  ],
+  "classes": [
+    "Cloudy",
+    "Rain",
+    "Shine",
+    "Sunrise"
+  ],
+  "hyper": {
+    "data": "cache/data32.npz",
+    "hidden": [
+      128
+    ],
+    "epochs": 150,
+    "lr": 0.001,
+    "l2": 0.003,
+    "dropout": 0.3,
+    "batch": 64,
+    "patience": 30,
+    "feat": "eng",
+    "seed": 1,
+    "final": true,
+    "out": "model"
+  },
+  "gradient_check_max_rel_error": 7.918807984284369e-11
+}

@@ -1,0 +1,13 @@
+{
+  "_help": "ไม่บังคับ: classes = ลำดับคลาส (คลาสใหม่ที่ไม่อยู่ในลิสต์จะต่อท้ายอัตโนมัติ) | aliases = ชื่อโฟลเดอร์/คำนำหน้าไฟล์อื่น ๆ -> ชื่อคลาสจริง | rain_classes = คลาสที่นับรวมเป็น 'โอกาสเกิดฝน' (เช่นใส่ \"Storm Cloudy\" เพิ่มได้)",
+  "classes": ["Cloudy", "Rain", "Shine", "Sunrise", "Storm Cloudy"],
+  "aliases": {
+    "rainy": "Rain",
+    "sunny": "Shine",
+    "strom cloudy": "Storm Cloudy",
+    "stormcloudy": "Storm Cloudy",
+    "stormy": "Storm Cloudy",
+    "storm": "Storm Cloudy"
+  },
+  "rain_classes": ["Rain"]
+}
