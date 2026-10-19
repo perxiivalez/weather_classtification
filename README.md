@@ -9,12 +9,11 @@
 ```bash
 pip install -r requirements.txt
 
-# เรียก API  (พอร์ต 8000, เปิดหน้าเว็บอัปโหลดที่ http://localhost:8000/)
 python api.py
 curl -F "image=@sky.jpg" http://localhost:8000/predict
-curl -F "image=@sky.jpg" "http://localhost:8000/predict?trace=1"   # แสดงมิติเมทริกซ์ทุกขั้นตอน
+curl -F "image=@sky.jpg" "http://localhost:8000/predict?trace=1"   
 
-# ดูการคำนวณทุกขั้นตอนของภาพหนึ่งภาพในเทอร์มินัล
+
 python demo_trace.py sky.jpg
 ```
 
@@ -42,8 +41,6 @@ dataset/
 # แก้ dataset (เพิ่ม/ลบ/ย้ายรูป หรือสร้างโฟลเดอร์คลาสใหม่) แล้วรัน:
 python train.py --final
 # (ระบบตรวจว่ารูปเปลี่ยนหรือไม่ แล้วสร้าง cache ใหม่เอง ; บังคับสร้างใหม่ด้วย --rebuild)
-# ใช้ dataset ที่อื่น:  python train.py --dataset /path/to/dataset --final
-# ถ้า Cloudy กับ Storm Cloudy ยังปนกัน ลองลดการสุ่มความสว่างตอน augment:  --gain 0.1
 ```
 
 ค่าเริ่มต้นของ `train.py`: `--model hybrid --channels 16 32 32 --fc-img 64 --fc-feat 64 --feat eng --dropout 0.3 --l2 1e-3 --seed 1`

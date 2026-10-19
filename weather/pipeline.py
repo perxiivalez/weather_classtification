@@ -1,11 +1,3 @@
-"""pipeline.py - ลำดับการทำงานทั้งหมดตั้งแต่รับภาพจนได้ผลลัพธ์ พร้อม 'trace' แสดงมิติเมทริกซ์ในทุกขั้นตอน
-
-  อัปโหลดภาพ -> เมทริกซ์ (H,W,3) -> ความสว่าง + ตรวจท้องฟ้า + ตรวจสอบภาพ
-             -> Resize (R_h X R_w^T) 32x32 -> แยกเป็น 2 สาขา
-                  (ก) ภาพ normalize -> [Conv3x3 -> ReLU -> MaxPool] x3 -> flatten -> FC+ReLU      (CNN)
-                  (ข) เวกเตอร์คุณลักษณะ 36 มิติ -> normalize -> FC+ReLU                           (feature)
-             -> concat (ก)+(ข) -> FC -> softmax -> คลาส + ความมั่นใจ -> โอกาสฝน
-"""
 import json
 import os
 import re
@@ -17,9 +9,7 @@ from .mlp import softmax
 
 DEFAULT_MODEL = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "model", "weights.npz")
 
-# น้ำหนักที่แต่ละคลาสมีส่วนใน "โอกาสเกิดฝน"  (ชื่อเทียบแบบไม่สนตัวพิมพ์/ช่องว่าง/ขีด)
-#   โอกาสฝน = sum_k  w_k * p_k      (w=1 คือนับเต็ม, w=0.7 คือนับ 70% ของความน่าจะเป็นคลาสนั้น)
-# ปรับได้โดยไม่ต้องเทรนใหม่ ที่ไฟล์ model/rain_config.json เช่น {"rain_weights": {"Rain": 1.0, "Storm Cloudy": 0.8}}
+
 DEFAULT_RAIN_WEIGHTS = {"Rain": 1.0, "Storm Cloudy": 0.7}
 
 
@@ -28,7 +18,6 @@ def _norm(s):
 
 
 def rain_probability(prob, classes, weights):
-    """prob: เวกเตอร์ softmax (K,) ; weights: {ชื่อคลาส: w} -> (โอกาสฝน 0..1 หรือ None, รายละเอียดต่อคลาส)"""
     idx = {_norm(c): i for i, c in enumerate(classes)}
     parts = {}
     for name, w in weights.items():
@@ -51,7 +40,7 @@ class Predictor:
         self.classes = [str(c) for c in d["classes"]]
         self.feat = str(d["feat"])
         self.temp = float(d["temp"]) if "temp" in d.files else 1.0
-        # น้ำหนักโอกาสฝน: เริ่มจากค่าเริ่มต้น (Rain + Storm Cloudy) -> เพิ่มคลาสจาก weights.npz ถ้ามี -> ทับด้วย model/rain_config.json
+    
         w = dict(DEFAULT_RAIN_WEIGHTS)
         have = {_norm(k) for k in w}
         if "rain_classes" in d.files:
@@ -62,23 +51,23 @@ class Predictor:
         if os.path.exists(cfg):
             with open(cfg, encoding="utf-8") as f:
                 w.update({str(k): float(v) for k, v in json.load(f).get("rain_weights", {}).items()})
-        # เก็บเฉพาะคลาสที่โมเดลนี้มีจริง (ใช้ชื่อสะกดตามโมเดล)
+        
         idx = {_norm(c): c for c in self.classes}
         self.rain_weights = {idx[_norm(k)]: v for k, v in w.items() if _norm(k) in idx}
         self.rain_classes = list(self.rain_weights)
 
-    # ------------------------------------------------------------------
+  
     def predict(self, source, trace=False):
         steps = []
         t = (lambda name, **kw: steps.append(dict(step=name, **kw))) if trace else (lambda *a, **k: None)
 
-        # 1) ภาพ -> เมทริกซ์
+        
         img = ops.load_rgb(source)
         H, W, C = img.shape
         t("1_image_to_matrix", matrix_shape=[H, W, C], value_range=[float(img.min()), float(img.max())],
           note="สมาชิกแต่ละตัวคือความเข้มของพิกเซลต่อช่องสี R,G,B (ปรับเป็น 0..1)")
 
-        # 2) ตรวจสอบภาพเบื้องต้น
+        
         P = img.reshape(-1, 3)
         b = ops.brightness(img)
         t("2a_brightness", pixel_matrix_shape=list(P.shape), weight_vector=ops.LUMA_W.tolist(),
@@ -92,31 +81,31 @@ class Predictor:
             return dict(status="rejected", reasons=report["problems"], validation=report,
                         trace=steps if trace else None)
 
-        # 3) Resize + Normalize
+       
         small = ops.resize(img, ops.IMG_SIZE)
         Rh, Rw = ops.area_matrix(H, ops.IMG_SIZE), ops.area_matrix(W, ops.IMG_SIZE)
         t("3a_resize", R_h_shape=list(Rh.shape), R_w_shape=list(Rw.shape), formula="X' = R_h X R_w^T (ต่อช่องสี)",
           result_shape=list(small.shape), row_sum_check=float(Rh.sum(1).mean()))
-        F = ops.build_features(small[None], self.feat)            # (1 x D)
+        F = ops.build_features(small[None], self.feat)          
         x = ops.normalize(F, self.mean, self.std)
         t("3b_vectorize_normalize", feature_mode=self.feat, vector_shape=list(x.shape),
           formula="x' = (x - mu) / sigma", mean_after=round(float(x.mean()), 4), std_after=round(float(x.std()), 4))
-        xi = ((small - self.img_mean) / self.img_std)[None]       # (1 x 32 x 32 x 3) ภาพ normalize ต่อช่องสีสำหรับ CNN
+        xi = ((small - self.img_mean) / self.img_std)[None]      
         t("3c_cnn_input", shape=list(xi.shape), formula="X' = (X - mu_rgb) / sigma_rgb")
 
-        # 4) Forward: สาขา CNN + สาขา feature -> concat -> ชั้นออก (แสดงมิติทุกชั้น)
+        
         _, cache = self.net.forward(xi, x)
         for name, desc, active, total in cache["trace"]:
             extra = {} if active is None else dict(active_units=active, total_units=total)
             t(f"4_{name}", layer=desc, **extra)
         logits = cache["out"]["Z"].astype(np.float64)
 
-        # 5) Softmax (หาร temperature ที่ปรับจาก validation)
+
         prob = softmax(logits / self.temp)[0]
         t("5_softmax", logits=logits[0].round(4).tolist(), temperature=self.temp,
           formula="p_k = exp(z_k/T) / sum_j exp(z_j/T)", probabilities=prob.round(4).tolist(), sum=float(prob.sum()))
 
-        # 6) ผลลัพธ์
+
         k = int(prob.argmax())
         rain_p, rain_parts = rain_probability(prob, self.classes, self.rain_weights)
         out = dict(status="ok", predicted_class=self.classes[k], confidence=round(float(prob[k]), 4),

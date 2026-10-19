@@ -1,7 +1,3 @@
-"""demo_trace.py - แสดงการคำนวณเวกเตอร์/เมทริกซ์ทุกขั้นตอนของภาพหนึ่งภาพ
-
-ใช้:  python demo_trace.py path/to/sky.jpg
-"""
 import json
 import sys
 

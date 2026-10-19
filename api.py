@@ -1,16 +1,10 @@
-"""api.py - REST API จำแนกสภาพอากาศจากรูปภาพ (โมเดลไฮบริด CNN + คุณลักษณะ 36 มิติ ด้วย NumPy)
-
-รัน:   python api.py                  (พอร์ต 8000)
-ใช้:   curl -F "image=@sky.jpg" http://localhost:8000/predict
-       curl -F "image=@sky.jpg" "http://localhost:8000/predict?trace=1"   # แสดงมิติเมทริกซ์ทุกขั้นตอน
-"""
 import os
 from flask import Flask, jsonify, request, send_from_directory
 
 from weather.pipeline import Predictor
 
 app = Flask(__name__, static_folder="static")
-app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024        # จำกัดไฟล์ 25 MB
+app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024        
 predictor = Predictor()
 
 
@@ -35,9 +29,9 @@ def predict():
         return jsonify(status="error", message="ไฟล์ว่างเปล่า"), 400
     try:
         out = predictor.predict(data, trace=request.args.get("trace") == "1")
-    except Exception:                                          # ไฟล์ที่ไม่ใช่รูป / รูปเสีย
+    except Exception:                                          
         return jsonify(status="error", message="อ่านไฟล์เป็นรูปภาพไม่ได้ (รองรับ JPG/PNG/WEBP/BMP)"), 400
-    if out["status"] == "rejected":                            # ไม่ผ่านการตรวจสอบภาพ
+    if out["status"] == "rejected":                          
         return jsonify(out), 422
     return jsonify(out)
 

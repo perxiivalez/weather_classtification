@@ -1,10 +1,3 @@
-"""train.py - เทรนโมเดลไฮบริด CNN + คุณลักษณะ 36 มิติ (NumPy) แล้วประเมินผลบนชุดทดสอบ
-
-ใช้:  python train.py --final            (อ่านรูปจากโฟลเดอร์ dataset/ แล้วเทรน + ประเมิน + บันทึกโมเดล)
-      python train.py --dataset path/to/dataset --final
-จำนวนคลาสมาจากโฟลเดอร์ใน dataset/ อัตโนมัติ ; ถ้าเพิ่ม/ลบรูปจะสร้าง cache ใหม่ให้เอง
-เลือก hyper-parameter ด้วย validation set เท่านั้น  ชุด test ถูกใช้ครั้งเดียวตอนท้าย
-"""
 import argparse
 import json
 import os
@@ -18,20 +11,17 @@ from weather.mlp import softmax
 
 
 def augment(Ximg, rng, gain_range=0.25):
-    """Data augmentation (ทำบนเมทริกซ์ภาพ N x 32 x 32 x 3 ด้วย NumPy)
-    - พลิกซ้าย-ขวา  - ปรับความสว่าง/คอนทราสต์  - เลื่อนภาพเล็กน้อย  - สัญญาณรบกวนเบา ๆ
-    ช่วยให้โมเดลไม่จำ 'ลักษณะกล้อง/ความสว่างของแหล่งข้อมูล' แต่เรียนรู้ลักษณะท้องฟ้าจริง"""
     n = len(Ximg)
     out = Ximg.copy()
     flip = rng.random(n) < 0.5
     out[flip] = out[flip][:, :, ::-1, :]
-    gain = rng.uniform(1 - gain_range, 1 + gain_range, (n, 1, 1, 1))   # ความสว่าง
-    contrast = rng.uniform(0.8, 1.2, (n, 1, 1, 1))               # คอนทราสต์รอบค่าเฉลี่ย
+    gain = rng.uniform(1 - gain_range, 1 + gain_range, (n, 1, 1, 1))  
+    contrast = rng.uniform(0.8, 1.2, (n, 1, 1, 1))              
     m = out.mean(axis=(1, 2, 3), keepdims=True)
     out = ((out - m) * contrast + m) * gain
-    tint = rng.uniform(0.92, 1.08, (n, 1, 1, 3))                 # เพี้ยนสีเล็กน้อย (white balance)
+    tint = rng.uniform(0.92, 1.08, (n, 1, 1, 3))                
     out = out * tint
-    for i in range(n):                                           # เลื่อนภาพ +-3 พิกเซล
+    for i in range(n):                                          
         dx, dy = rng.integers(-3, 4, 2)
         out[i] = np.roll(out[i], (dy, dx), axis=(0, 1))
     out += rng.normal(0, 0.01, out.shape)
@@ -84,10 +74,10 @@ def main():
     counts = {c: [int(((y == i) & m).sum()) for m in (tr, va, te)] for i, c in enumerate(CLASSES)}
     print("จำนวนภาพต่อคลาส [train, val, test]:", counts)
 
-    flat = lambda A: build_features(A, a.feat)                    # (N,32,32,3) -> (N,D) เมทริกซ์คุณลักษณะ
-    mu, sd = flat(Ximg[tr]).mean(0), flat(Ximg[tr]).std(0) + 1e-6   # สถิติจาก train เท่านั้น
-    imu, isd = Ximg[tr].mean((0, 1, 2)), Ximg[tr].std((0, 1, 2)) + 1e-6   # ค่าเฉลี่ย/ส่วนเบี่ยงเบนต่อช่องสี (R,G,B)
-    norm = lambda A: ((A - imu) / isd, (flat(A) - mu) / sd)         # -> (ภาพ normalize, feature normalize)
+    flat = lambda A: build_features(A, a.feat)                   
+    mu, sd = flat(Ximg[tr]).mean(0), flat(Ximg[tr]).std(0) + 1e-6   
+    imu, isd = Ximg[tr].mean((0, 1, 2)), Ximg[tr].std((0, 1, 2)) + 1e-6  
+    norm = lambda A: ((A - imu) / isd, (flat(A) - mu) / sd)        
     (XIva, XFva), (XIte, XFte) = norm(Ximg[va]), norm(Ximg[te])
 
     net = HybridNet(flat(Ximg[:1]).shape[1], K, img_size=Ximg.shape[1], ch=a.channels, fc_img=a.fc_img, fc_feat=a.fc_feat,
@@ -98,7 +88,7 @@ def main():
     idx_tr = np.where(tr)[0]
     for ep in range(1, a.epochs + 1):
         order = rng.permutation(idx_tr)
-        aug = augment(Ximg[order], rng, a.gain)                           # สร้างภาพ augment ใหม่ทุก epoch
+        aug = augment(Ximg[order], rng, a.gain)                          
         (XItr, XFtr), ytr = norm(aug), y[order]
         tl = 0.0
         for s in range(0, len(order), a.batch):
@@ -122,17 +112,15 @@ def main():
     if not a.final:
         return best["acc"]
 
-    # ------------------------------------------------ ประเมินผลสุดท้าย (test)
     os.makedirs(a.out, exist_ok=True)
     mt = metrics(net, XIte, XFte, y[te], K)
     mt_tr = metrics(net, *norm(Ximg[tr]), y[tr], K)
-    # Temperature scaling: เลือก T ที่ทำให้ NLL บน validation ต่ำสุด (ค้นหาแบบกริด 1 พารามิเตอร์)
     Tgrid = np.round(np.arange(0.5, 4.01, 0.05), 2)
     LGva = net.logits(XIva, XFva).astype(np.float64)
     nll = [float(-np.log(softmax(LGva / T)[np.arange(len(LGva)), y[va]] + 1e-12).mean()) for T in Tgrid]
     T = float(Tgrid[int(np.argmin(nll))])
 
-    def ece(P, yy, bins=10):          # Expected Calibration Error
+    def ece(P, yy, bins=10):          
         conf, pred = P.max(1), P.argmax(1)
         e = 0.0
         for lo in np.linspace(0, 1, bins, endpoint=False):
@@ -151,7 +139,7 @@ def main():
                           for i, c in enumerate(CLASSES)},
                class_counts=counts, calibration=calib, confusion_matrix=cm.tolist(), classes=CLASSES,
                hyper={k: v for k, v in vars(a).items() if k not in ("dataset", "cache", "out")}, model=net.describe(), gradient_check_max_rel_error=float(gradient_check()))
-    rain = [c for c in read_config(a.dataset)["rain_classes"] if c in CLASSES]   # ไม่มี classes.json -> ค่าเริ่มต้น Rain, Storm Cloudy      # คลาสที่นับเป็น "โอกาสฝน"
+    rain = [c for c in read_config(a.dataset)["rain_classes"] if c in CLASSES]   
     np.savez(os.path.join(a.out, "weights.npz"), mean=mu, std=sd, img_mean=imu, img_std=isd, classes=np.array(CLASSES), feat=np.array(a.feat),
              temp=np.array(T), rain_classes=np.array(rain, dtype="<U32"), **best["state"])
     json.dump(rep, open(os.path.join(a.out, "metrics.json"), "w"), indent=2, ensure_ascii=False)

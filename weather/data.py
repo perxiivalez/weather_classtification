@@ -1,17 +1,3 @@
-"""data.py - อ่านชุดข้อมูลจากโฟลเดอร์ dataset/ แล้วแปลงภาพเป็นเวกเตอร์ + แบ่ง train/val/test
-
-โครงสร้างโฟลเดอร์ (เพิ่ม/ลบ/ย้ายรูปได้อิสระ แล้วเทรนใหม่ได้เลย):
-
-    dataset/
-      classes.json        <- (ไม่บังคับ) ลำดับคลาส, ชื่อเรียกอื่น (aliases), คลาสที่นับเป็น "ฝน"
-      Cloudy/   *.jpg     <- 1 โฟลเดอร์ = 1 คลาส  (ชื่อโฟลเดอร์ = ชื่อคลาส, มีโฟลเดอร์ย่อยข้างในได้)
-      Rain/     *.jpg
-      Storm Cloudy/ *.jpg
-      ...
-      cloudy1.jpg         <- (รองรับ) รูปที่วางหลวม ๆ ในโฟลเดอร์ dataset เลย จะจับคลาสจากคำนำหน้าชื่อไฟล์
-
-เพิ่มคลาสใหม่ = สร้างโฟลเดอร์ใหม่ใส่รูป (จำนวนคลาสของโมเดลปรับเองอัตโนมัติ)
-"""
 import glob
 import hashlib
 import json
@@ -27,11 +13,10 @@ from . import imageops as ops
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_DATASET = os.path.join(ROOT, "dataset")
 IMG_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
-MIN_PER_CLASS = 5      # คลาสที่มีรูปน้อยกว่านี้จะถูกข้าม (แบ่ง train/val/test ไม่ได้) พร้อมเตือน
+MIN_PER_CLASS = 5      
 
 
 def _norm(s):
-    """ทำชื่อให้เทียบกันได้: ตัวพิมพ์เล็ก ไม่สนช่องว่าง/ขีด  ('Storm_Cloudy' == 'storm cloudy')"""
     return re.sub(r"[\s_\-]+", "", str(s)).lower()
 
 
@@ -49,14 +34,13 @@ def _is_image(f):
 
 
 def discover(dataset_dir):
-    """สแกน dataset -> (classes, items) ; items = [(path, class_index)]"""
     if not os.path.isdir(dataset_dir):
         raise SystemExit(f"ไม่พบโฟลเดอร์ dataset: {dataset_dir}")
     cfg = read_config(dataset_dir)
     alias = {_norm(k): v for k, v in cfg["aliases"].items()}
-    by_class = {}                                   # ชื่อคลาส -> [ไฟล์]
+    by_class = {}                                  
 
-    # (1) โฟลเดอร์ = คลาส
+    
     for entry in sorted(os.listdir(dataset_dir)):
         d = os.path.join(dataset_dir, entry)
         if not os.path.isdir(d) or entry.startswith((".", "__")):
@@ -65,13 +49,13 @@ def discover(dataset_dir):
         files = [f for f in sorted(glob.glob(os.path.join(d, "**", "*"), recursive=True)) if _is_image(f)]
         by_class.setdefault(name, []).extend(files)
 
-    # (2) รูปที่วางหลวมในโฟลเดอร์ dataset: จับคลาสจากคำนำหน้าชื่อไฟล์ (เช่น rain12.jpg, storm_cloudy3.png)
+    
     loose = [f for f in sorted(glob.glob(os.path.join(dataset_dir, "*"))) if _is_image(f)]
     if loose:
         known = {_norm(c): c for c in (cfg["classes"] or [])}
         known.update({_norm(c): c for c in by_class})
         known.update({k: v for k, v in alias.items()})
-        prefixes = sorted(known, key=len, reverse=True)       # คำนำหน้ายาวสุดก่อน (rainy ก่อน rain)
+        prefixes = sorted(known, key=len, reverse=True)       
         unmatched = 0
         for f in loose:
             n = _norm(os.path.splitext(os.path.basename(f))[0])
@@ -83,7 +67,7 @@ def discover(dataset_dir):
         if unmatched:
             print(f"[คำเตือน] มีรูปในโฟลเดอร์ dataset {unmatched} ไฟล์ที่ชื่อไม่ตรงคลาสใด ๆ จึงข้ามไป", flush=True)
 
-    # ลำดับคลาส: ตาม classes.json ก่อน (คลาสที่เหลือต่อท้ายตามตัวอักษร); ข้ามคลาสที่ไม่มีรูป
+    
     wanted = list(cfg["classes"] or [])
     for c in wanted:
         if not by_class.get(c):
@@ -101,7 +85,7 @@ def discover(dataset_dir):
 
 
 def fingerprint(classes, items, cfg):
-    """ลายนิ้วมือของ dataset: เปลี่ยนเมื่อมีการเพิ่ม/ลบ/แก้ไขรูป หรือแก้ classes.json -> ใช้ตัดสินใจสร้าง cache ใหม่"""
+    
     h = hashlib.sha1(json.dumps([classes, cfg], sort_keys=True, ensure_ascii=False).encode())
     for p, y in items:
         st = os.stat(p)
@@ -115,11 +99,11 @@ def _process(path):
         ok, rep = ops.validate(img)
         return ops.resize(img, ops.IMG_SIZE).astype(np.float32), ok, rep
     except Exception:
-        return None                                  # ไฟล์รูปเสีย
+        return None                                
 
 
 def _split(y, k, seed):
-    """แบ่ง 70/15/15 แบบ stratified ตามคลาส"""
+    
     rng = np.random.default_rng(seed)
     split = np.empty(len(y), dtype="<U5")
     for c in range(k):
@@ -148,14 +132,13 @@ def build(dataset_dir, out_npz, seed=42, workers=None):
     good = [i for i, r in enumerate(res) if r is not None]
     items = [items[i] for i in good]
     res = [res[i] for i in good]
-    X = np.stack([r[0] for r in res])                      # (N, 32, 32, 3)
+    X = np.stack([r[0] for r in res])                      
     ok = np.array([r[1] for r in res])
     reps = [r[2] for r in res]
     y = np.array([i[1] for i in items])
     paths = np.array([os.path.relpath(i[0], dataset_dir) for i in items])
 
-    # ---- ลบภาพซ้ำ (ซ้ำเมื่อเวกเตอร์ 32x32 เหมือนกันหลังปัดค่า)
-    # ถ้าภาพเดียวกันอยู่ต่างคลาสกัน (ติดป้ายขัดแย้ง) จะตัดทิ้งทั้งหมดเพราะสอนโมเดลสับสน
+    
     groups = {}
     for i, x in enumerate(X):
         groups.setdefault(hashlib.md5(np.round(x * 31).astype(np.uint8).tobytes()).hexdigest(), []).append(i)
@@ -183,7 +166,7 @@ def build(dataset_dir, out_npz, seed=42, workers=None):
 
 
 def ensure_cache(dataset_dir, cache_npz, rebuild=False, seed=42):
-    """ใช้ cache เดิมถ้า dataset ไม่เปลี่ยน ; ถ้ามีการเพิ่ม/ลบ/แก้รูป (หรือสั่ง rebuild) จะสร้างใหม่ให้อัตโนมัติ"""
+   
     classes, items, cfg = discover(dataset_dir)
     fp = fingerprint(classes, items, cfg)
     if not rebuild and os.path.exists(cache_npz):
@@ -201,7 +184,7 @@ def load(npz_path):
 
 
 if __name__ == "__main__":
-    # python -m weather.data [โฟลเดอร์ dataset] [ไฟล์ปลายทาง .npz]
+   
     ds = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_DATASET
     out = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "cache", "data32.npz")
     build(ds, out)
